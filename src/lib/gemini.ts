@@ -85,6 +85,48 @@ async function callGemini(
   }
 }
 
+// ── Plain text generation (no rubric) ───────────────────────────────────────
+
+export async function generateResponse(
+  model: string,
+  apiKey: string,
+  prompt: string
+): Promise<string> {
+  const url = `${GEMINI_BASE_URL}/${model}:generateContent`;
+
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.9 },
+  });
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: buildHeaders(apiKey),
+    body,
+  });
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const err = (await response.json()) as { error?: { message?: string } };
+      if (err.error?.message) detail = err.error.message;
+    } catch {
+      // ignore
+    }
+    throw new GeminiApiError(response.status, detail);
+  }
+
+  const data = (await response.json()) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+  };
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Empty response from Gemini API.");
+  return text;
+}
+
 // ── System prompts ───────────────────────────────────────────────────────────
 
 const CRITERIA_BLOCK = RUBRIC.map(

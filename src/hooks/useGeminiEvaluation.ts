@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import {
   evaluateSingle,
   evaluateAB,
+  generateResponse,
   GeminiApiError,
 } from "../lib/gemini";
 import { appendHistory } from "../lib/storage";
@@ -14,6 +15,8 @@ type Status = "idle" | "loading" | "success" | "error";
 
 interface UseGeminiEvaluation {
   status: Status;
+  generateStatus: "idle" | "loading" | "error";
+  generateError: string | null;
   error: string | null;
   singleResult: SingleEvaluationResult | null;
   abResult: ABEvaluationResult | null;
@@ -30,6 +33,11 @@ interface UseGeminiEvaluation {
     responseA: string,
     responseB: string
   ) => Promise<void>;
+  runGenerate: (
+    model: string,
+    apiKey: string,
+    prompt: string
+  ) => Promise<string | null>;
   reset: () => void;
 }
 
@@ -54,12 +62,16 @@ function formatError(err: unknown): string {
 export function useGeminiEvaluation(): UseGeminiEvaluation {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [generateStatus, setGenerateStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [singleResult, setSingleResult] = useState<SingleEvaluationResult | null>(null);
   const [abResult, setAbResult] = useState<ABEvaluationResult | null>(null);
 
   const reset = useCallback(() => {
     setStatus("idle");
     setError(null);
+    setGenerateStatus("idle");
+    setGenerateError(null);
     setSingleResult(null);
     setAbResult(null);
   }, []);
@@ -112,5 +124,33 @@ export function useGeminiEvaluation(): UseGeminiEvaluation {
     []
   );
 
-  return { status, error, singleResult, abResult, runSingle, runAB, reset };
+  const runGenerate = useCallback(
+    async (model: string, apiKey: string, prompt: string): Promise<string | null> => {
+      setGenerateStatus("loading");
+      setGenerateError(null);
+      try {
+        const text = await generateResponse(model, apiKey, prompt);
+        setGenerateStatus("idle");
+        return text;
+      } catch (err) {
+        setGenerateError(formatError(err));
+        setGenerateStatus("error");
+        return null;
+      }
+    },
+    []
+  );
+
+  return {
+    status,
+    generateStatus,
+    generateError,
+    error,
+    singleResult,
+    abResult,
+    runSingle,
+    runAB,
+    runGenerate,
+    reset,
+  };
 }

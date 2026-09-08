@@ -20,11 +20,14 @@ export default function App() {
 
   const {
     status,
+    generateStatus,
+    generateError,
     error,
     singleResult,
     abResult,
     runSingle,
     runAB,
+    runGenerate,
     reset,
   } = useGeminiEvaluation();
 
@@ -95,11 +98,14 @@ export default function App() {
                 model={model}
                 apiKey={apiKey}
                 status={status}
+                generateStatus={generateStatus}
+                generateError={generateError}
                 error={error}
                 result={singleResult}
                 onEvaluate={(prompt, response) =>
                   runSingle(model, apiKey, prompt, response)
                 }
+                onGenerate={(prompt) => runGenerate(model, apiKey, prompt)}
                 onReset={reset}
               />
             ) : (
